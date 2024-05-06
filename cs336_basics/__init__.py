@@ -1,1 +1,1 @@
-from .bpe import train_bpe
+from .train_bpe import train_bpe
