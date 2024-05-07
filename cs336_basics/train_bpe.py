@@ -46,6 +46,7 @@ def get_pretoken_stats(input_path: str, special_tokens: list[str], logger=None):
     # with timed_block("count pretokens file", logger):
     # dict[str: int], e.g. {'low': 3}
     pretokens = Counter(re.findall(GPT2_PATTERN, text, concurrent=True))
+    del text
     
     str_to_tuple_bytes = lambda pretoken: tuple(bytes([b]) for b in pretoken.encode("utf-8"))
 
