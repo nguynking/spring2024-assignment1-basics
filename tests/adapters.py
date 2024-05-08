@@ -7,7 +7,7 @@ from typing import IO, BinaryIO, Iterable, Optional, Type
 import numpy.typing as npt
 import torch
 
-from cs336_basics import train_bpe, Tokenizer, RMSNorm
+from cs336_basics import train_bpe, Tokenizer, RMSNorm, gelu, PositionwiseFFN
 
 
 def run_positionwise_feedforward(
@@ -45,7 +45,9 @@ def run_positionwise_feedforward(
     # You can also manually assign the weights
     # my_ffn.w1.weight.data = weights["w1.weight"]
     # my_ffn.w2.weight.data = weights["w2.weight"]
-    raise NotImplementedError
+    ffn = PositionwiseFFN(d_model, d_ff)
+    ffn.set_weights_from_dict(weights)
+    return ffn(in_features)
 
 
 def run_scaled_dot_product_attention(
@@ -334,7 +336,8 @@ def run_rmsnorm(
         RMSNorm of the `in_features`.
     """
     rmsnorm = RMSNorm(d_model, eps)
-    rmsnorm.set_weights_from_dict(weights)
+    # rmsnorm.set_weights_from_dict(weights)
+    rmsnorm.load_state_dict(weights)
     return rmsnorm(in_features)
 
 
@@ -350,7 +353,7 @@ def run_gelu(in_features: torch.FloatTensor) -> torch.FloatTensor:
         FloatTensor of with the same shape as `in_features` with the output of applying
         GELU to each element.
     """
-    raise NotImplementedError
+    return gelu(in_features)
 
 
 def run_get_batch(
