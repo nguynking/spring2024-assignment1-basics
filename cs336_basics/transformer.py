@@ -21,7 +21,7 @@ class RMSNorm(nn.Module):
 def gelu(x):
     return x * 0.5 * (1.0 + torch.erf(x / sqrt(2.0)))
 
-class PositionwiseFFN(nn.Module):
+class FeedForward(nn.Module):
     def __init__(self, d_model, d_ff):
         super().__init__()
         self.w1 = nn.Linear(d_ff, d_model, bias=False)

@@ -7,7 +7,7 @@ from typing import IO, BinaryIO, Iterable, Optional, Type
 import numpy.typing as npt
 import torch
 
-from cs336_basics import train_bpe, Tokenizer, RMSNorm, gelu, PositionwiseFFN
+from cs336_basics import train_bpe, Tokenizer, RMSNorm, gelu, FeedForward
 
 
 def run_positionwise_feedforward(
@@ -45,7 +45,7 @@ def run_positionwise_feedforward(
     # You can also manually assign the weights
     # my_ffn.w1.weight.data = weights["w1.weight"]
     # my_ffn.w2.weight.data = weights["w2.weight"]
-    ffn = PositionwiseFFN(d_model, d_ff)
+    ffn = FeedForward(d_model, d_ff)
     ffn.set_weights_from_dict(weights)
     return ffn(in_features)
 
