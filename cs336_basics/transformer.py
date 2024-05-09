@@ -4,6 +4,13 @@ import torch.nn.functional as F
 import math
 from einops import einsum, rearrange, reduce, repeat
 
+def dict_subset(d, module):
+    out_d = {}
+    for k, v in d.items():
+        if k.startswith(f'{module}.'):
+            out_d[k[len(module) + 1:]] = v
+    return out_d
+
 class RMSNorm(nn.Module):
     def __init__(self, d_model, eps=1e-5, device=None):
         super().__init__()
@@ -21,7 +28,7 @@ class RMSNorm(nn.Module):
         return x * self.weight / torch.sqrt(x.pow(2).mean(dim=-1, keepdim=True) + self.eps)
 
 def gelu(x):
-    return x * 0.5 * (1.0 + torch.erf(x / sqrt(2.0)))
+    return x * 0.5 * (1.0 + torch.erf(x / math.sqrt(2.0)))
 
 class FeedForward(nn.Module):
     def __init__(self, d_model, d_ff):
@@ -71,47 +78,7 @@ def scaled_dot_product_attention(K, Q, V, mask=None, pdrop=None):
     return scores @ V
 
 class CausalMultiheadAttention(nn.Module):
-    """Given the key, query, and value projection weights of a naive unbatched
-    implementation of multi-head attention, return the output of an optimized batched
-    implementation. This implementation should handle the key, query, and value projections
-    for all heads in a single matrix multiply.
-    See section 3.2.2 of Vaswani et al., 2017.
-
-    Args:
-        d_model: int
-            Dimensionality of the feedforward input and output.
-        num_heads: int
-            Number of heads to use in multi-headed attention.
-        attn_pdrop: float
-            Drop-out the attention probabilities (the softmax-normalized
-            attention scores) with this rate.
-        weights: dict[str, torch.FloatTensor]
-            State dict of our reference implementation.
-            The keys of this dictionary are:
-            - `q_heads.{N}.weight`, `q_heads.{N}.weight`:
-                Weights for the query projection heads.
-                N is an integer from 0 to `num_heads - 1`.
-                Shape of each tensor is (d_key, d_model).
-            - `k_heads.{N}.weight`, `k_heads.{N}.weight`:
-                Weights for the key projection heads.
-                N is an integer from 0 to `num_heads - 1`.
-                Shape of each tensor is (d_key, d_model).
-            - `v_heads.{N}.weight`, `v_heads.{N}.weight`:
-                Weights for the value projection heads.
-                N is an integer from 0 to `num_heads - 1`.
-                Shape of each tensor is (d_value, d_model).
-            - `output_proj.weight`:
-                Weight of the output projection
-                (W^{O} in the original Transformer paper)
-                Shape of (d_model, d_value * num_heads).
-        in_features: torch.FloatTensor
-            Tensor to run your implementation on.
-
-    Returns:
-        torch.FloatTensor with the output of running your optimized, batched multi-headed attention
-        implementation with the given QKV projection weights and input features.
-    """
-    def __init__(self, d_model, num_heads, attn_pdrop, max_seq_len=512):
+    def __init__(self, d_model, num_heads, attn_pdrop):
         """d_k = d_v = d_model / h"""
         super().__init__()
         self.d_model = d_model
@@ -122,12 +89,24 @@ class CausalMultiheadAttention(nn.Module):
         
         self.w_qkv = nn.Parameter(torch.empty(3, num_heads, d_k, d_model))
         self.w_o = nn.Linear(d_model, d_model, bias=False)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        for qkv in range(self.w_qkv.shape[0]):
+            for head in range(self.w_qkv.shape[1]):
+                nn.init.kaiming_uniform_(self.w_qkv[qkv, head], a=math.sqrt(5))
 
     def set_weights_from_dict(self, d):
         # q_heads.{N}.weight
-        for qkvi, qkv_name in enumerate('qkv'):
-            for head in range(self.num_heads):
-                self.w_qkv.data[qkvi, head] = d[f'{qkv_name}_heads.{head}.weight']
+        if 'q_heads.0.weight' in d:
+            for qkvi, qkv_name in enumerate('qkv'):
+                for head in range(self.num_heads):
+                    self.w_qkv.data[qkvi, head] = d[f'{qkv_name}_heads.{head}.weight']
+        else:
+            for i, qkv in enumerate('qkv'):
+                weight = d[f'{qkv}_proj.weight']
+                weight = rearrange(weight, '(heads k) m -> heads k m', heads=self.num_heads)
+                self.w_qkv.data[i] = weight
         self.w_o.weight.data = d['output_proj.weight']
         
     def forward(self, x):
@@ -154,4 +133,30 @@ class CausalMultiheadAttention(nn.Module):
         # final linear layer
         out = einsum(attn_concatenated, self.w_o.weight, '... s dim_out, m dim_out -> ... s m')
         
+        return out
+
+class Block(nn.Module):
+    def __init__(self, d_model, num_heads, d_ff, attn_pdrop, residual_pdrop):
+        super().__init__()
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.d_ff = d_ff
+        self.attn_pdrop = attn_pdrop
+        self.residual_pdrop = residual_pdrop
+
+        self.ln1 = RMSNorm(d_model)
+        self.attn = CausalMultiheadAttention(d_model, num_heads, attn_pdrop)
+        self.ffn = FeedForward(d_model, d_ff)
+        self.ln2 = RMSNorm(d_model)
+        self.dropout = nn.Dropout(p=residual_pdrop)
+
+    def set_weights_from_dict(self, d):
+        self.attn.set_weights_from_dict(dict_subset(d, module='attn'))
+        self.ln1.set_weights_from_dict(dict_subset(d, module='ln1'))
+        self.ffn.set_weights_from_dict(dict_subset(d, module='ffn'))
+        self.ln2.set_weights_from_dict(dict_subset(d, module='ln2'))
+
+    def forward(self, x):
+        x = x + self.dropout(self.attn(self.ln1(x)))
+        out = x + self.dropout(self.ffn(self.ln2(x)))
         return out

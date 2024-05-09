@@ -15,7 +15,8 @@ from cs336_basics import (
     FeedForward,
     softmax,
     scaled_dot_product_attention,
-    CausalMultiheadAttention
+    CausalMultiheadAttention,
+    Block
 )
 
 
@@ -222,8 +223,9 @@ def run_transformer_block(
         FloatTensor of shape (batch_size, sequence_length, d_model) with the output of
         running the Transformer block on the input features.
     """
-    raise NotImplementedError
-
+    block = Block(d_model, num_heads, d_ff, attn_pdrop, residual_pdrop)
+    block.set_weights_from_dict(weights)
+    return block(in_features)
 
 def run_transformer_lm(
     vocab_size: int,

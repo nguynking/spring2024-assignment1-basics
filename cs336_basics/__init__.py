@@ -6,5 +6,6 @@ from .transformer import (
     FeedForward,
     softmax,
     scaled_dot_product_attention,
-    CausalMultiheadAttention
+    CausalMultiheadAttention,
+    Block
 )

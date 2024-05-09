@@ -165,6 +165,7 @@ def test_transformer_lm_truncated_input():
 def test_transformer_block():
     torch.manual_seed(42)
     reference_weights = torch.load(FIXTURES_PATH / "transformer_block_weights.pt")
+    print(reference_weights.keys())
     in_features = torch.load(FIXTURES_PATH / "in_features.pt")
     expected_output = torch.load(FIXTURES_PATH / "transformer_block_expected_output.pt")
     d_model = 64
