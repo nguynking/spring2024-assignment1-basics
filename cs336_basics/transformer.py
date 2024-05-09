@@ -24,8 +24,8 @@ def gelu(x):
 class FeedForward(nn.Module):
     def __init__(self, d_model, d_ff):
         super().__init__()
-        self.w1 = nn.Linear(d_ff, d_model, bias=False)
-        self.w2 = nn.Linear(d_model, d_ff, bias=False)
+        self.w1 = nn.Linear(d_model, d_ff, bias=False)
+        self.w2 = nn.Linear(d_ff, d_model, bias=False)
         self.gelu = gelu
 
     def set_weights_from_dict(self, d):
