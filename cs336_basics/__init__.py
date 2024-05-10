@@ -7,5 +7,6 @@ from .transformer import (
     softmax,
     scaled_dot_product_attention,
     CausalMultiheadAttention,
-    Block
+    Block,
+    Transformer
 )
