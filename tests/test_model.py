@@ -108,7 +108,6 @@ def test_transformer_lm():
     residual_pdrop = 0.0
 
     reference_weights = torch.load(FIXTURES_PATH / "transformer_lm_weights.pt")
-    print(reference_weights.keys())
     in_indices = torch.load(FIXTURES_PATH / "in_indices.pt")
     expected_output = torch.load(FIXTURES_PATH / "transformer_lm_expected_output.pt")
     actual_output = run_transformer_lm(
