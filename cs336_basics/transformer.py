@@ -117,10 +117,11 @@ class CausalMultiheadAttention(nn.Module):
         h: number of heads
         k: key dimension
         """
-        # x: (..., s, m)
+        # x: (b, s, m) ref: (8, 128, 64)
         seq_len = x.size(-2)
+        print(x.shape)
 
-        qkv_heads = einsum(x, self.w_qkv, '... s m , qkv h k m -> ... qkv h s k')
+        qkv_heads = einsum(x, self.w_qkv, 'b s m , qkv h k m -> b qkv h s k')
         Q, K, V = (qkv_heads[..., i, :, :, :] for i in range(3))
 
         # attn_out: ( ..., k)
@@ -128,10 +129,10 @@ class CausalMultiheadAttention(nn.Module):
         attn_out = scaled_dot_product_attention(K, Q, V, mask=mask, pdrop=self.attn_pdrop)
         
         # concat all heads
-        attn_concatenated = rearrange(attn_out, '... h s k -> ... s (h k)')
+        attn_concatenated = rearrange(attn_out, 'b h s k -> b s (h k)')
 
         # final linear layer
-        out = einsum(attn_concatenated, self.w_o.weight, '... s dim_out, m dim_out -> ... s m')
+        out = einsum(attn_concatenated, self.w_o.weight, 'b s dim_out, m dim_out -> b s m')
         
         return out
 
@@ -187,55 +188,6 @@ class Transformer(nn.Module):
             Apply dropout to the sum of the token and position embeddings
             as well as the output of each sub-layer, before it is added to the
             sub-layer input and normalized (section 5.4).
-        weights: dict[str, torch.FloatTensor]
-            State dict of our reference implementation. {num_layers} refers to an
-            integer between `0` and `num_layers - 1` (the layer index).
-            The keys of this dictionary are:
-            - `token_embeddings.weight`
-                Token embedding matrix. Shape is (vocab_size, d_model).
-            - `position_embeddings.weight`
-                Positional embedding matrix. Shape is (context_length, d_model).
-            - `layers.{num_layers}.attn.q_proj.weight`
-                The query projections for all `num_heads` attention heads.
-                Shape is (num_heads * (d_model / num_heads), d_model).
-                The rows are ordered by matrices of shape (num_heads, d_k),
-                so `attn.q_proj.weight == torch.cat([q_heads.0.weight, ..., q_heads.N.weight], dim=0)`.
-            - `layers.{num_layers}.attn.k_proj.weight`
-                The key projections for all `num_heads` attention heads.
-                Shape is (num_heads * (d_model / num_heads), d_model).
-                The rows are ordered by matrices of shape (num_heads, d_k),
-                so `attn.k_proj.weight == torch.cat([k_heads.0.weight, ..., k_heads.N.weight], dim=0)`.
-            - `layers.{num_layers}.attn.v_proj.weight`
-                The value projections for all `num_heads` attention heads.
-                Shape is (num_heads * (d_model / num_heads), d_model).
-                The rows are ordered by matrices of shape (num_heads, d_v),
-                so `attn.v_proj.weight == torch.cat([v_heads.0.weight, ..., v_heads.N.weight], dim=0)`.
-            - `layers.{num_layers}.attn.output_proj.weight`
-                Weight of the multi-head self-attention output projection
-                Shape is ((d_model / num_heads) * num_heads, d_model).
-            - `layers.{num_layers}.ln1.weight`
-                Weights of affine transform for the first RMSNorm
-                applied in the transformer block.
-                Shape is (d_model,).
-            - `layers.{num_layers}.ffn.w1.weight`
-                Weight of the first linear transformation in the FFN.
-                Shape is (d_ff, d_model).
-            - `layers.{num_layers}.ffn.w2.weight`
-                Weight of the second linear transformation in the FFN.
-                Shape is (d_model, d_ff).
-            - `layers.{num_layers}.ln2.weight`
-                Weights of affine transform for the second RMSNorm
-                applied in the transformer block.
-                Shape is (d_model,).
-            - `ln_final.weight`
-                Weights of affine transform for RMSNorm applied to the output of the final transformer block.
-                Shape is (d_model, ).
-            - `lm_head.weight`
-                Weights of the language model output embedding.
-                Shape is (vocab_size, d_model).
-        in_indices: torch.LongTensor
-            Tensor with input indices to run the language model on. Shape is (batch_size, sequence_length), where
-            `sequence_length` is at most `context_length`.
 
     Returns:
         FloatTensor of shape (batch size, sequence_length, vocab_size) with the predicted unnormalized
