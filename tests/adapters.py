@@ -20,7 +20,8 @@ from cs336_basics import (
     Transformer,
     cross_entropy,
     AdamW,
-    lr_cosine_schedule
+    lr_cosine_schedule,
+    gradient_clipping
 )
 
 
@@ -458,7 +459,7 @@ def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm:
     Returns:
         None
     """
-    raise NotImplementedError
+    gradient_clipping(parameters, max_l2_norm)
 
 
 def get_adamw_cls() -> Type[torch.optim.Optimizer]:

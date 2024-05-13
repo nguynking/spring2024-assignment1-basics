@@ -51,3 +51,12 @@ def lr_cosine_schedule(t, lr_max, lr_min, warm_up, cosine_annealing):
     else:
         lr_t = lr_min
     return lr_t
+
+
+def gradient_clipping(parameters, max_l2_norm, eps=1e-6):
+    l2_norm = torch.sqrt(torch.sum(torch.stack([torch.sum(p.grad**2) for p in parameters if p.grad is not None])))
+    if l2_norm >= max_l2_norm:
+        for p in parameters:
+            if p.grad is None:
+                continue
+            p.grad *= max_l2_norm / (l2_norm + eps)
