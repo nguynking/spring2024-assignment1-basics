@@ -11,4 +11,4 @@ from .transformer import (
     Transformer
 )
 from .loss import cross_entropy
-from .optimizer import AdamW
+from .optimizer import AdamW, lr_cosine_schedule
