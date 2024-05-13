@@ -18,7 +18,8 @@ from cs336_basics import (
     CausalMultiheadAttention,
     Block,
     Transformer,
-    cross_entropy
+    cross_entropy,
+    AdamW
 )
 
 
@@ -463,7 +464,7 @@ def get_adamw_cls() -> Type[torch.optim.Optimizer]:
     """
     Returns a torch.optim.Optimizer that implements AdamW.
     """
-    raise NotImplementedError
+    return AdamW
 
 
 def run_get_lr_cosine_schedule(
