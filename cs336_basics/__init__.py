@@ -10,3 +10,4 @@ from .transformer import (
     Block,
     Transformer
 )
+from .loss import cross_entropy
