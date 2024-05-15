@@ -21,7 +21,8 @@ from cs336_basics import (
     cross_entropy,
     AdamW,
     lr_cosine_schedule,
-    gradient_clipping
+    gradient_clipping,
+    get_batch
 )
 
 
@@ -409,7 +410,7 @@ def run_get_batch(
         is the sampled input sequences, and the second tuple item is the corresponding
         language modeling labels.
     """
-    raise NotImplementedError
+    return get_batch(dataset, batch_size, context_length, device)
 
 
 def run_softmax(in_features: torch.FloatTensor, dim: int) -> torch.FloatTensor:
