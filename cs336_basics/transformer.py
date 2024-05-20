@@ -119,7 +119,6 @@ class CausalMultiheadAttention(nn.Module):
         """
         # x: (b, s, m) ref: (8, 128, 64)
         seq_len = x.size(-2)
-        print(x.shape)
 
         qkv_heads = einsum(x, self.w_qkv, 'b s m , qkv h k m -> b qkv h s k')
         Q, K, V = (qkv_heads[..., i, :, :, :] for i in range(3))
