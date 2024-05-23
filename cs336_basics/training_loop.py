@@ -2,27 +2,33 @@ import numpy as np
 import random
 import torch
 
-def get_batch(ids, batch_size, context_length, device):
+def get_batch(ids, batch_size, context_length, steps, device, start_idx, seed=40):
     """
     Args:
         ids (np.array): token ids
         batch_size: int
         context_length: int
+        steps: int
         device: str
+        start_idx: int
+        seed: int = 40
 
     Returns:
         X: tensor of shape (batch_size, context_length)
         y: tensor of shape (batch_size, context_length)
     """
     n = len(ids) - context_length
-    idxs = random.sample(range(n), batch_size)
-    X, y = [], []
-    for idx in idxs:
-        X.append(ids[idx: idx + context_length])
-        y.append(ids[idx + 1: idx + context_length + 1])
-    X = torch.tensor(X, device=device)
-    y = torch.tensor(y, device=device)
-    return (X, y)
+    indices = random.choices(range(n), k=steps * batch_size)
+    if seed is not None:
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+        random.seed(seed)
+    for i in range(start_idx * batch_size, steps * batch_size, batch_size):
+        X_batch = [ids[idx    :idx + context_length    ] for idx in indices[i:i + batch_size]]
+        y_batch = [ids[idx + 1:idx + context_length + 1] for idx in indices[i:i + batch_size]]
+        X = torch.tensor(X_batch, device=device)
+        y = torch.tensor(y_batch, device=device)
+        yield int(i / batch_size), (X, y)
 
 def save_checkpoint(model, optimizer, iteration, out):
     """Dump model, optimizer and iteration into file-like object out
