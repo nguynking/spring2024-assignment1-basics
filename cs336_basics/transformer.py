@@ -14,7 +14,7 @@ def dict_subset(d, module):
     return out_d
 
 class RMSNorm(nn.Module):
-    def __init__(self, d_model, eps=1e-5, device=None):
+    def __init__(self, d_model, eps=1e-5, device='cuda'):
         super().__init__()
         self.weight = nn.Parameter(torch.ones(d_model, device=device))
         self.eps = eps
@@ -120,13 +120,12 @@ class CausalMultiheadAttention(nn.Module):
         k: key dimension
         """
         # x: (b, s, m) ref: (8, 128, 64)
-        seq_len = x.size(-2)
+        seq_len = x.shape[-2]
 
         qkv_heads = einsum(x, self.w_qkv, 'b s m , qkv h k m -> b qkv h s k')
         Q, K, V = (qkv_heads[..., i, :, :, :] for i in range(3))
-
         # attn_out: ( ..., k)
-        mask = torch.triu(torch.ones(seq_len, seq_len, dtype=torch.bool), diagonal=1).to(x.device)
+        mask = torch.triu(torch.ones(seq_len, seq_len, dtype=torch.bool, device=x.device), diagonal=1)
         attn_out = scaled_dot_product_attention(K, Q, V, mask=mask, pdrop=self.attn_pdrop)
         
         # concat all heads
