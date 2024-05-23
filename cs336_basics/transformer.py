@@ -4,6 +4,8 @@ import torch.nn.functional as F
 import math
 from einops import einsum, rearrange, reduce, repeat
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
 def dict_subset(d, module):
     out_d = {}
     for k, v in d.items():
@@ -124,7 +126,7 @@ class CausalMultiheadAttention(nn.Module):
         Q, K, V = (qkv_heads[..., i, :, :, :] for i in range(3))
 
         # attn_out: ( ..., k)
-        mask = torch.triu(torch.ones(seq_len, seq_len, dtype=torch.bool), diagonal=1)
+        mask = torch.triu(torch.ones(seq_len, seq_len, dtype=torch.bool), diagonal=1).to(x.device)
         attn_out = scaled_dot_product_attention(K, Q, V, mask=mask, pdrop=self.attn_pdrop)
         
         # concat all heads
